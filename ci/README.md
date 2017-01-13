@@ -101,7 +101,7 @@ let projects =
 
 (* The main entry-point *)
 let () =
-  DataKitCI.Main.run projects
+  Datakit_ci.run projects
 ```
 
 This parses no command-line arguments (it is a "pure" cmdliner value) and applies `my_test` to every open PR and branch in "https://github.com/me/my-project" (change `me/my-project` to your own project path, of course).
@@ -127,17 +127,17 @@ let my_test = Term.pending "Running your test now..."
 
 More usefully, the result can depend on the pull request...
 
-## The DKCI_git plugin
+## The CI_git plugin
 
-One very important term is `DKCI_git.fetch_head`, which fetches the PR's head commit to a local git repository, ready for testing:
+One very important term is `CI_git.fetch_head`, which fetches the PR's head commit to a local git repository, ready for testing:
 
 ```ocaml
 open Term.Infix   (* Provides the >>= operator *)
 
-let local_repo = DKCI_git.connect ~dir:"/tmp/example"
+let local_repo = CI_git.connect ~dir:"/tmp/example"
 
 let my_test =
-  DKCI_git.fetch_head local_repo >>= fun local_commit ->
+  CI_git.fetch_head local_repo >>= fun local_commit ->
   Term.return "Fetched head commit successfully"
 ```
 
@@ -148,19 +148,19 @@ If `x` is a success value then it evaluates to `f x`, otherwise it just reports 
 In this case, we `git fetch` the head commit into the `/tmp/example` repository (which must already exist as a clone of the remote repository).
 This term will be pending while the `git fetch` is in progress and will then report success.
 
-Use `DKCI_git.command` to configure a command to run on the commit (e.g. `make`) and use `DKCI_git.run` to execute it, e.g.
+Use `CI_git.command` to configure a command to run on the commit (e.g. `make`) and use `CI_git.run` to execute it, e.g.
 
 ```
 let one_hour = 60. *. 60.
 
-let make = DKCI_git.command ~logs ~label:"make" ~timeout:one_hour ~clone:true [
+let make = CI_git.command ~logs ~label:"make" ~timeout:one_hour ~clone:true [
     [| "make"; "build" |];
     [| "make"; "test" |];
   ]
 
 let my_test =
-  DKCI_git.fetch_head local_repo >>= fun src ->
-  DKCI_git.run make src >>= fun () ->
+  CI_git.fetch_head local_repo >>= fun src ->
+  CI_git.run make src >>= fun () ->
   Term.return "Tests succeeded"
 ```
 
@@ -168,7 +168,7 @@ let my_test =
 
 To evaluate two terms in parallel, use `Term.pair`:
 
-```
+```ocaml
 let combine a b =
   Printf.sprintf "a=%d and b=%d" a b
 
@@ -196,12 +196,14 @@ You can configure the CI to allow users to authenticate using their GitHub accou
 
 Once GitHub authentication is configured, you can write policies that depend on GitHub permissions. e.g.
 
+```ocaml
     ~can_read:ACL.(
       any [
         username "admin";
         can_read_github "my-org/my-private-project";
       ]
     )
+```
 
 This will allow read access to the CI if the user is the local "admin" user, or
 is a GitHub user who can read the "my-org/my-private-repository" repository.
@@ -209,10 +211,12 @@ is a GitHub user who can read the "my-org/my-private-repository" repository.
 
 ## Extending DataKitCI
 
-Various other terms are available. See the `src/dataKitCI.mli` and `src/dKCI_git.mli` files for details.
+Various other terms are available. See the [`src/datakit_ci.mli`][datakit_ci.mli] and [`src/ci_git.mli`][ci_git.mli] files for details.
 Other plugins are under development.
 To make your own, you need to implement the `BUILDER` interface.
 Consult the API documentation and the Git plugin example for more information.
 
 [DataKit]: https://github.com/docker/datakit
 [cmdliner]: http://erratique.ch/software/cmdliner/doc/Cmdliner
+[datakit_ci.mli]: https://github.com/docker/datakit/blob/master/ci/src/datakit_ci.mli
+[ci_git.mli]: https://github.com/docker/datakit/commits/master/ci/src/cI_git.mli
